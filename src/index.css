@@ -160,5 +160,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in-up { animation: none; }
+  /* 关闭平滑滚动，锚点跳转等行为直接到位 */
+  html {
+    scroll-behavior: auto;
+  }
+
+  /*
+   * 不能只关动画：.animate-fade-in-up 及元素上的 opacity-0 会把元素藏在
+   * opacity: 0，原本靠动画的 forwards 终帧恢复到 1。动画被禁后必须
+   * 直接给出最终状态，否则开启"减弱动态效果"时标题和卡片全部不可见。
+   */
+  .animate-fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -10,7 +10,11 @@ export function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    // 注意：index.css 里 html { scroll-behavior: smooth } 生效时，
+    // behavior: 'auto' 会服从 CSS 变成平滑滚动——滚动位置会长时间扫过
+    // 回到顶部按钮的显隐阈值，导致按钮闪烁、动画被打断时按钮卡在错误状态。
+    // 路由切换必须显式用 'instant' 立即归位。
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname]);
 
   return null;
