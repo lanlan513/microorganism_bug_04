@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 interface StatCounterProps {
   value: number;
@@ -20,22 +21,29 @@ export function StatCounter({
   const started = useRef(false);
 
   useEffect(() => {
+    if (prefersReducedMotion()) {
+      setDisplay(value);
+      return;
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let animationId: number;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !started.current) {
             started.current = true;
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
               const duration = 1500;
               const startTime = performance.now();
               const animate = (now: number) => {
                 const progress = Math.min((now - startTime) / duration, 1);
                 const eased = 1 - Math.pow(1 - progress, 3);
                 setDisplay(Math.floor(eased * value));
-                if (progress < 1) requestAnimationFrame(animate);
+                if (progress < 1) animationId = requestAnimationFrame(animate);
                 else setDisplay(value);
               };
-              requestAnimationFrame(animate);
+              animationId = requestAnimationFrame(animate);
             }, delay);
           }
         });
@@ -44,7 +52,11 @@ export function StatCounter({
     );
 
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timeoutId);
+      if (animationId !== undefined) cancelAnimationFrame(animationId);
+      observer.disconnect();
+    };
   }, [value, delay]);
 
   return (

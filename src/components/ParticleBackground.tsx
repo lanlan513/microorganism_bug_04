@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 interface Particle {
   x: number;
@@ -22,7 +23,8 @@ export function ParticleBackground() {
     if (!ctx) return;
 
     let particles: Particle[] = [];
-    let animationId: number;
+    let animationId: number | undefined;
+    const reducedMotion = prefersReducedMotion();
     let mouseX = -1000;
     let mouseY = -1000;
 
@@ -30,6 +32,7 @@ export function ParticleBackground() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       initParticles();
+      if (reducedMotion) renderParticles(0);
     };
 
     const initParticles = () => {
@@ -58,12 +61,14 @@ export function ParticleBackground() {
       mouseY = e.clientY;
     };
 
-    const animate = (time: number) => {
+    const renderParticles = (time: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((p, i) => {
-        p.x += p.vx;
-        p.y += p.vy;
+        if (!reducedMotion) {
+          p.x += p.vx;
+          p.y += p.vy;
+        }
 
         if (p.x < -50) p.x = canvas.width + 50;
         if (p.x > canvas.width + 50) p.x = -50;
@@ -73,16 +78,20 @@ export function ParticleBackground() {
         const dx = mouseX - p.x;
         const dy = mouseY - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
+        if (!reducedMotion && dist < 150) {
           const force = (150 - dist) / 150;
           p.vx -= (dx / dist) * force * 0.02;
           p.vy -= (dy / dist) * force * 0.02;
         }
 
-        p.vx *= 0.995;
-        p.vy *= 0.995;
+        if (!reducedMotion) {
+          p.vx *= 0.995;
+          p.vy *= 0.995;
+        }
 
-        const pulse = Math.sin(time * 0.001 + p.pulsePhase) * 0.3 + 0.7;
+        const pulse = reducedMotion
+          ? 1
+          : Math.sin(time * 0.001 + p.pulsePhase) * 0.3 + 0.7;
         const glowRadius = p.radius * 4 * pulse;
 
         const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
@@ -116,16 +125,22 @@ export function ParticleBackground() {
         });
       });
 
-      animationId = requestAnimationFrame(animate);
+      if (!reducedMotion) {
+        animationId = requestAnimationFrame(renderParticles);
+      }
     };
 
     resize();
     window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', onMouseMove);
-    animationId = requestAnimationFrame(animate);
+    if (!reducedMotion) {
+      window.addEventListener('mousemove', onMouseMove);
+      animationId = requestAnimationFrame(renderParticles);
+    } else {
+      renderParticles(0);
+    }
 
     return () => {
-      cancelAnimationFrame(animationId);
+      if (animationId !== undefined) cancelAnimationFrame(animationId);
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouseMove);
     };
